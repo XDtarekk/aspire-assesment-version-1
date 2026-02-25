@@ -1,0 +1,16 @@
+{
+  "name": "aspire-monorepo",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:backend": "npm run dev --workspace=aspire-backend",
+    "dev:frontend": "npm run dev --workspace=aspire-frontend",
+    "build:db": "npm run generate --workspace=@aspire/db && npm run build --workspace=@aspire/db",
+    "db:migrate": "npm run db:migrate --workspace=aspire-backend",
+    "db:migrate:dev": "npm run db:migrate:dev --workspace=aspire-backend",
+    "db:seed": "npm run db:seed --workspace=aspire-backend"
+  }
+}

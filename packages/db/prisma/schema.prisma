@@ -1,0 +1,90 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  LIBRARIAN
+  MEMBER
+}
+
+enum BookStatus {
+  AVAILABLE
+  CHECKED_OUT
+  LOST
+  ARCHIVED
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  name         String?
+  role         Role     @default(MEMBER)
+  passwordHash String?
+  createdAt    DateTime @default(now())
+
+  loans    Loan[]
+  auditLogs AuditLog[]
+
+  @@map("users")
+}
+
+model Book {
+  id          String     @id @default(uuid())
+  title       String
+  author      String
+  isbn        String?    @unique
+  description String?
+  imageUrl    String?
+  tags        String[]   @default([])
+  status      BookStatus @default(AVAILABLE)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  archivedAt  DateTime?
+
+  loans Loan[]
+
+  @@index([title])
+  @@index([author])
+  @@index([status])
+  @@map("books")
+}
+
+model Loan {
+  id           String    @id @default(uuid())
+  bookId       String
+  userId       String
+  checkedOutAt DateTime  @default(now())
+  dueAt        DateTime
+  returnedAt   DateTime?
+
+  book Book   @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  user User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([bookId])
+  @@index([returnedAt])
+  @@map("loans")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  actorId    String
+  action     String
+  entityType String
+  entityId   String
+  metadata   Json?    @default("{}")
+  createdAt  DateTime @default(now())
+
+  actor User @relation(fields: [actorId], references: [id], onDelete: Cascade)
+
+  @@index([actorId])
+  @@index([entityType])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
