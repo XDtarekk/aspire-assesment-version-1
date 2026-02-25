@@ -1,6 +1,6 @@
 Got you. Here’s a **Cursor-ready implementation plan** you can paste directly. It’s written like a task spec Cursor can execute step-by-step.
 
----
+--
 
 ## Project Plan (Cursor Spec)
 
