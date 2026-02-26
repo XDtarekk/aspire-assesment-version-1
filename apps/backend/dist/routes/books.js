@@ -10,8 +10,8 @@ const audit_js_1 = require("../lib/audit.js");
 exports.booksRouter = (0, express_1.Router)();
 exports.booksRouter.get('/', async (req, res, next) => {
     try {
-        const { q, title, author, tag, status } = req.query;
-        const where = { archivedAt: null };
+        const { q, title, author, tag, status, archived } = req.query;
+        const where = archived === 'true' ? { archivedAt: { not: null } } : { archivedAt: null };
         if (status) {
             where.status = status;
         }
@@ -88,17 +88,25 @@ exports.booksRouter.patch('/:id', auth_js_1.requireAuth, (0, auth_js_1.requireRo
         });
         if (!existing)
             return res.status(404).json({ error: 'Book not found' });
+        const now = new Date();
+        const data = {
+            ...(parsed.data.title !== undefined && { title: parsed.data.title }),
+            ...(parsed.data.author !== undefined && { author: parsed.data.author }),
+            ...(parsed.data.isbn !== undefined && { isbn: parsed.data.isbn }),
+            ...(parsed.data.description !== undefined && { description: parsed.data.description }),
+            ...(parsed.data.imageUrl !== undefined && { imageUrl: parsed.data.imageUrl }),
+            ...(parsed.data.tags !== undefined && { tags: parsed.data.tags }),
+            ...(parsed.data.status !== undefined && { status: parsed.data.status }),
+        };
+        if (parsed.data.status === db_2.BookStatus.ARCHIVED) {
+            data.archivedAt = now;
+        }
+        else if (parsed.data.status !== undefined && parsed.data.status !== db_2.BookStatus.ARCHIVED) {
+            data.archivedAt = null;
+        }
         const book = await db_1.prisma.book.update({
             where: { id: req.params.id },
-            data: {
-                ...(parsed.data.title !== undefined && { title: parsed.data.title }),
-                ...(parsed.data.author !== undefined && { author: parsed.data.author }),
-                ...(parsed.data.isbn !== undefined && { isbn: parsed.data.isbn }),
-                ...(parsed.data.description !== undefined && { description: parsed.data.description }),
-                ...(parsed.data.imageUrl !== undefined && { imageUrl: parsed.data.imageUrl }),
-                ...(parsed.data.tags !== undefined && { tags: parsed.data.tags }),
-                ...(parsed.data.status !== undefined && { status: parsed.data.status }),
-            },
+            data,
         });
         if (req.userId)
             await (0, audit_js_1.auditLog)(req.userId, 'BOOK_UPDATE', 'Book', book.id, { title: book.title });

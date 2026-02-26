@@ -31,7 +31,6 @@ export declare const updateBookSchema: z.ZodObject<{
     status: z.ZodOptional<z.ZodNativeEnum<{
         AVAILABLE: "AVAILABLE";
         CHECKED_OUT: "CHECKED_OUT";
-        LOST: "LOST";
         ARCHIVED: "ARCHIVED";
     }>>;
 }, "strip", z.ZodTypeAny, {
@@ -39,7 +38,7 @@ export declare const updateBookSchema: z.ZodObject<{
     author?: string | undefined;
     isbn?: string | null | undefined;
     description?: string | null | undefined;
-    status?: "AVAILABLE" | "CHECKED_OUT" | "LOST" | "ARCHIVED" | undefined;
+    status?: "AVAILABLE" | "CHECKED_OUT" | "ARCHIVED" | undefined;
     imageUrl?: string | null | undefined;
     tags?: string[] | undefined;
 }, {
@@ -47,7 +46,7 @@ export declare const updateBookSchema: z.ZodObject<{
     author?: string | undefined;
     isbn?: string | null | undefined;
     description?: string | null | undefined;
-    status?: "AVAILABLE" | "CHECKED_OUT" | "LOST" | "ARCHIVED" | undefined;
+    status?: "AVAILABLE" | "CHECKED_OUT" | "ARCHIVED" | undefined;
     imageUrl?: string | null | undefined;
     tags?: string[] | undefined;
 }>;

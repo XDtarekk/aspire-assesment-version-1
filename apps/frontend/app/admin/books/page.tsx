@@ -117,16 +117,19 @@ export default function AdminBooksPage() {
     setSaving(true);
     setError(null);
     try {
-      const payload: Parameters<typeof api.books.update>[1] = {
-        title: form.title.trim(),
-        author: form.author.trim(),
-        isbn: form.isbn.trim() || undefined,
-        description: form.description.trim() || undefined,
-        imageUrl: form.imageUrl.trim() || undefined,
-        tags: form.tags.split(",").map((t) => t.trim()).filter(Boolean),
-      };
+      const title = form.title.trim();
+      const author = form.author.trim();
+      const tags = form.tags.split(",").map((t) => t.trim()).filter(Boolean);
       if (editing) {
-        payload.status = form.status;
+        const payload: Parameters<typeof api.books.update>[1] = {
+          title,
+          author,
+          isbn: form.isbn.trim() || undefined,
+          description: form.description.trim() || undefined,
+          imageUrl: form.imageUrl.trim() || undefined,
+          tags,
+          status: form.status,
+        };
         const updated = await api.books.update(editing.id, payload, token);
         if (updated.archivedAt) {
           setBooks((prev) => prev.filter((b) => b.id !== updated.id));
@@ -135,7 +138,17 @@ export default function AdminBooksPage() {
           setBooks((prev) => prev.map((b) => (b.id === updated.id ? updated : b)));
         }
       } else {
-        const created = await api.books.create(payload, token);
+        const created = await api.books.create(
+          {
+            title,
+            author,
+            isbn: form.isbn.trim() || undefined,
+            description: form.description.trim() || undefined,
+            imageUrl: form.imageUrl.trim() || undefined,
+            tags,
+          },
+          token
+        );
         setBooks((prev) => [created, ...prev]);
       }
       setModalOpen(false);
