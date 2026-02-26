@@ -18,6 +18,21 @@ API for the Mini Library Management System.
 - `ADMIN_EMAIL` – used by seed to create/update ADMIN user
 - `LIBRARIAN_EMAIL` / `LIBRARIAN_PASSWORD` – optional; seed creates a LIBRARIAN with password (defaults below)
 
+## Deploy on Railway (monorepo)
+
+The backend depends on the workspace package `@aspire/db` (in `packages/db`), so deployment must use the **repository root**, not `apps/backend`.
+
+In Railway, for the backend service:
+
+| Setting | Value |
+|--------|--------|
+| **Root Directory** | Leave empty (repo root) or `.` |
+| **Install Command** | `npm install` (or `npm ci`) |
+| **Build Command** | `npm run build:backend` |
+| **Start Command** | `npm run start:backend` |
+
+Add env vars (e.g. `DATABASE_URL`, `JWT_SECRET`, `GOOGLE_CLIENT_ID`, etc.) in Railway’s Variables. Run migrations after deploy (e.g. `npm run db:migrate` from `apps/backend` with `DATABASE_URL` set, or use Railway’s run command).
+
 ## Commands (from repo root or `apps/backend`)
 
 ```bash

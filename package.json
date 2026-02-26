@@ -11,6 +11,8 @@
     "build:db": "npm run generate --workspace=@aspire/db && npm run build --workspace=@aspire/db",
     "db:migrate": "npm run db:migrate --workspace=aspire-backend",
     "db:migrate:dev": "npm run db:migrate:dev --workspace=aspire-backend",
-    "db:seed": "npm run db:seed --workspace=aspire-backend"
+    "db:seed": "npm run db:seed --workspace=aspire-backend",
+    "build:backend": "npm run build:db && npm run build --workspace=aspire-backend",
+    "start:backend": "npm run start --workspace=aspire-backend"
   }
 }
