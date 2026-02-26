@@ -16,7 +16,6 @@ enum Role {
 enum BookStatus {
   AVAILABLE
   CHECKED_OUT
-  LOST
   ARCHIVED
 }
 

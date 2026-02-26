@@ -40,7 +40,7 @@ export default function MyLoansPage() {
     setReturningId(loanId);
     api.loans
       .return(loanId, token)
-      .then(() => setLoans((prev) => prev.filter((l) => l.id !== loanId)))
+      .then(() => setLoans((prev) => prev.map((l) => (l.id === loanId ? { ...l, returnedAt: new Date().toISOString() } : l))))
       .catch((e) => setError(e instanceof Error ? e.message : "Return failed"))
       .finally(() => setReturningId(null));
   };
@@ -53,16 +53,17 @@ export default function MyLoansPage() {
       <h1 className="mb-6 text-2xl font-bold text-gray-900">My loans</h1>
       {error && <div className="mb-4 rounded bg-red-50 p-3 text-sm text-red-700">{error}</div>}
       {loans.length === 0 ? (
-        <p className="text-gray-500">You have no active loans. <Link href="/" className="text-blue-600 hover:underline">Browse books</Link>.</p>
+        <p className="text-gray-500">You have no loans. <Link href="/" className="text-blue-600 hover:underline">Browse books</Link>.</p>
       ) : (
         <div className="overflow-x-auto rounded-lg border border-gray-200">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Book</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Status</th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Checked out</th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Due date</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Returned</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Checked in</th>
                 <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Action</th>
               </tr>
             </thead>
@@ -74,6 +75,11 @@ export default function MyLoansPage() {
                       {loan.book.title}
                     </Link>
                     <span className="ml-2 text-gray-500">by {loan.book.author}</span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={`rounded px-2 py-0.5 text-xs font-medium ${loan.returnedAt ? "bg-green-100 text-green-800" : "bg-amber-100 text-amber-800"}`}>
+                      {loan.returnedAt ? "Checked in" : "Checked out"}
+                    </span>
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-600">{formatDate(loan.checkedOutAt)}</td>
                   <td className="px-4 py-3">

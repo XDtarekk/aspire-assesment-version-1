@@ -16,6 +16,7 @@ export default function AdminUsersPage() {
   const [setPasswordFor, setSetPasswordFor] = useState<User | null>(null);
   const [newPassword, setNewPassword] = useState("");
   const [setPasswordError, setSetPasswordError] = useState<string | null>(null);
+  const [settingPassword, setSettingPassword] = useState(false);
 
   const role = token ? parseJwtPayload(token).role : null;
   const isAdmin = role === "ADMIN";
@@ -57,13 +58,15 @@ export default function AdminUsersPage() {
       return;
     }
     setSetPasswordError(null);
+    setSettingPassword(true);
     api.users
       .setPassword(setPasswordFor.id, newPassword, token)
       .then(() => {
         setSetPasswordFor(null);
         setNewPassword("");
       })
-      .catch((e) => setSetPasswordError(e instanceof Error ? e.message : "Failed to set password"));
+      .catch((e) => setSetPasswordError(e instanceof Error ? e.message : "Failed to set password"))
+      .finally(() => setSettingPassword(false));
   };
 
   if (!isReady || !token || !isAdmin) return null;
@@ -142,15 +145,17 @@ export default function AdminUsersPage() {
                 <button
                   type="button"
                   onClick={() => { setSetPasswordFor(null); setNewPassword(""); setSetPasswordError(null); }}
-                  className="flex-1 rounded border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  disabled={settingPassword}
+                  className="flex-1 rounded border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                  disabled={settingPassword}
+                  className="flex-1 rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Set password
+                  {settingPassword ? "Setting…" : "Set password"}
                 </button>
               </div>
             </form>

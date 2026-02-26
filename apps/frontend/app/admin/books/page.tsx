@@ -2,25 +2,25 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { api, bookImageUrl, type Book } from "@/lib/api";
+import { api, bookImageUrl, type Book, type BookStatus } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { parseJwtPayload } from "@/lib/jwt";
 
 const statusColors: Record<string, string> = {
   AVAILABLE: "bg-green-100 text-green-800",
   CHECKED_OUT: "bg-amber-100 text-amber-800",
-  LOST: "bg-red-100 text-red-800",
   ARCHIVED: "bg-gray-100 text-gray-600",
 };
 
-type FormState = { title: string; author: string; isbn: string; description: string; imageUrl: string; tags: string };
+type FormState = { title: string; author: string; isbn: string; description: string; imageUrl: string; tags: string; status: BookStatus };
 
-const emptyForm: FormState = { title: "", author: "", isbn: "", description: "", imageUrl: "", tags: "" };
+const emptyForm: FormState = { title: "", author: "", isbn: "", description: "", imageUrl: "", tags: "", status: "AVAILABLE" };
 
 export default function AdminBooksPage() {
   const { token, isReady } = useAuth();
   const router = useRouter();
   const [books, setBooks] = useState<Book[]>([]);
+  const [archivedBooks, setArchivedBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -29,9 +29,27 @@ export default function AdminBooksPage() {
   const [saving, setSaving] = useState(false);
   const [enriching, setEnriching] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [archivingId, setArchivingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [unarchivingId, setUnarchivingId] = useState<string | null>(null);
 
   const role = token ? parseJwtPayload(token).role : null;
   const canEdit = role === "ADMIN" || role === "LIBRARIAN";
+
+  const loadBooks = () => {
+    if (!token) return;
+    setLoading(true);
+    Promise.all([
+      api.books.list(undefined, token),
+      api.books.list({ archived: "true" }, token),
+    ])
+      .then(([active, archived]) => {
+        setBooks(active);
+        setArchivedBooks(archived);
+      })
+      .catch((e) => setError(e instanceof Error ? e.message : "Failed to load"))
+      .finally(() => setLoading(false));
+  };
 
   useEffect(() => {
     if (!isReady) return;
@@ -39,11 +57,7 @@ export default function AdminBooksPage() {
       router.replace("/login");
       return;
     }
-    api.books
-      .list(undefined, token)
-      .then((list) => setBooks(list.filter((b) => !b.archivedAt)))
-      .catch((e) => setError(e instanceof Error ? e.message : "Failed to load"))
-      .finally(() => setLoading(false));
+    loadBooks();
   }, [token, isReady, canEdit, router]);
 
   const openCreate = () => {
@@ -61,6 +75,7 @@ export default function AdminBooksPage() {
       description: book.description ?? "",
       imageUrl: book.imageUrl ?? "",
       tags: book.tags.join(", "),
+      status: book.status,
     });
     setModalOpen(true);
   };
@@ -102,7 +117,7 @@ export default function AdminBooksPage() {
     setSaving(true);
     setError(null);
     try {
-      const payload = {
+      const payload: Parameters<typeof api.books.update>[1] = {
         title: form.title.trim(),
         author: form.author.trim(),
         isbn: form.isbn.trim() || undefined,
@@ -111,8 +126,14 @@ export default function AdminBooksPage() {
         tags: form.tags.split(",").map((t) => t.trim()).filter(Boolean),
       };
       if (editing) {
+        payload.status = form.status;
         const updated = await api.books.update(editing.id, payload, token);
-        setBooks((prev) => prev.map((b) => (b.id === updated.id ? updated : b)));
+        if (updated.archivedAt) {
+          setBooks((prev) => prev.filter((b) => b.id !== updated.id));
+          setArchivedBooks((prev) => [...prev, updated]);
+        } else {
+          setBooks((prev) => prev.map((b) => (b.id === updated.id ? updated : b)));
+        }
       } else {
         const created = await api.books.create(payload, token);
         setBooks((prev) => [created, ...prev]);
@@ -125,13 +146,44 @@ export default function AdminBooksPage() {
     }
   };
 
+  const handleArchive = async (book: Book) => {
+    if (!token || !confirm(`Archive "${book.title}"? It will no longer be available for checkout.`)) return;
+    setArchivingId(book.id);
+    try {
+      const updated = await api.books.update(book.id, { status: "ARCHIVED" }, token);
+      setBooks((prev) => prev.filter((b) => b.id !== book.id));
+      setArchivedBooks((prev) => [...prev, updated]);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Archive failed");
+    } finally {
+      setArchivingId(null);
+    }
+  };
+
   const handleDelete = async (book: Book) => {
-    if (!token || !confirm(`Delete "${book.title}"?`)) return;
+    if (!token || !confirm(`Delete "${book.title}"? This will archive the book.`)) return;
+    setDeletingId(book.id);
     try {
       await api.books.delete(book.id, token);
-      setBooks((prev) => prev.filter((b) => b.id !== book.id));
+      loadBooks();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Delete failed");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const handleUnarchive = async (book: Book) => {
+    if (!token || !confirm(`Make "${book.title}" available again for checkout?`)) return;
+    setUnarchivingId(book.id);
+    try {
+      const updated = await api.books.update(book.id, { status: "AVAILABLE" }, token);
+      setArchivedBooks((prev) => prev.filter((b) => b.id !== book.id));
+      setBooks((prev) => [updated, ...prev]);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to make available");
+    } finally {
+      setUnarchivingId(null);
     }
   };
 
@@ -173,11 +225,29 @@ export default function AdminBooksPage() {
                   </span>
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <button type="button" onClick={() => openEdit(book)} className="mr-2 text-blue-600 hover:underline">
+                  <button
+                    type="button"
+                    onClick={() => openEdit(book)}
+                    disabled={archivingId === book.id || deletingId === book.id}
+                    className="mr-2 text-blue-600 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
                     Edit
                   </button>
-                  <button type="button" onClick={() => handleDelete(book)} className="text-red-600 hover:underline">
-                    Delete
+                  <button
+                    type="button"
+                    onClick={() => handleArchive(book)}
+                    disabled={archivingId === book.id || deletingId === book.id}
+                    className="mr-2 text-amber-600 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {archivingId === book.id ? "Archiving…" : "Archive"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(book)}
+                    disabled={archivingId === book.id || deletingId === book.id}
+                    className="text-red-600 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {deletingId === book.id ? "Deleting…" : "Delete"}
                   </button>
                 </td>
               </tr>
@@ -185,6 +255,42 @@ export default function AdminBooksPage() {
           </tbody>
         </table>
       </div>
+
+      {archivedBooks.length > 0 && (
+        <div className="mt-10">
+          <h2 className="mb-4 text-xl font-semibold text-gray-900">Archived books</h2>
+          <p className="mb-4 text-sm text-gray-600">Archived books are hidden from the catalog and cannot be checked out. Make available to return them to the main list.</p>
+          <div className="overflow-x-auto rounded-lg border border-gray-200">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Title</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Author</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 bg-white">
+                {archivedBooks.map((book) => (
+                  <tr key={book.id}>
+                    <td className="px-4 py-3 font-medium text-gray-900">{book.title}</td>
+                    <td className="px-4 py-3 text-gray-600">{book.author}</td>
+                    <td className="px-4 py-3 text-right">
+                      <button
+                        type="button"
+                        onClick={() => handleUnarchive(book)}
+                        disabled={unarchivingId === book.id}
+                        className="text-blue-600 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {unarchivingId === book.id ? "Making available…" : "Make available"}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -260,6 +366,20 @@ export default function AdminBooksPage() {
                   className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm"
                 />
               </div>
+              {editing && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Status</label>
+                  <select
+                    value={form.status}
+                    onChange={(e) => setForm((f) => ({ ...f, status: e.target.value as BookStatus }))}
+                    className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                  >
+                    <option value="AVAILABLE">Available</option>
+                    <option value="CHECKED_OUT">Checked out</option>
+                    <option value="ARCHIVED">Archived (no checkout)</option>
+                  </select>
+                </div>
+              )}
               <div className="flex justify-end gap-2 pt-4">
                 <button
                   type="button"

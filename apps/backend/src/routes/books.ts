@@ -9,8 +9,9 @@ export const booksRouter = Router();
 
 booksRouter.get('/', async (req, res, next) => {
   try {
-    const { q, title, author, tag, status } = req.query as Record<string, string | undefined>;
-    const where: Record<string, unknown> = { archivedAt: null };
+    const { q, title, author, tag, status, archived } = req.query as Record<string, string | undefined>;
+    const where: Record<string, unknown> =
+      archived === 'true' ? { archivedAt: { not: null } } : { archivedAt: null };
 
     if (status) {
       where.status = status as BookStatus;
@@ -93,17 +94,24 @@ booksRouter.patch(
         where: { id: req.params.id, archivedAt: null },
       });
       if (!existing) return res.status(404).json({ error: 'Book not found' });
+      const now = new Date();
+      const data: Record<string, unknown> = {
+        ...(parsed.data.title !== undefined && { title: parsed.data.title }),
+        ...(parsed.data.author !== undefined && { author: parsed.data.author }),
+        ...(parsed.data.isbn !== undefined && { isbn: parsed.data.isbn }),
+        ...(parsed.data.description !== undefined && { description: parsed.data.description }),
+        ...(parsed.data.imageUrl !== undefined && { imageUrl: parsed.data.imageUrl }),
+        ...(parsed.data.tags !== undefined && { tags: parsed.data.tags }),
+        ...(parsed.data.status !== undefined && { status: parsed.data.status }),
+      };
+      if (parsed.data.status === BookStatus.ARCHIVED) {
+        data.archivedAt = now;
+      } else if (parsed.data.status !== undefined && parsed.data.status !== BookStatus.ARCHIVED) {
+        data.archivedAt = null;
+      }
       const book = await prisma.book.update({
         where: { id: req.params.id },
-        data: {
-          ...(parsed.data.title !== undefined && { title: parsed.data.title }),
-          ...(parsed.data.author !== undefined && { author: parsed.data.author }),
-          ...(parsed.data.isbn !== undefined && { isbn: parsed.data.isbn }),
-          ...(parsed.data.description !== undefined && { description: parsed.data.description }),
-          ...(parsed.data.imageUrl !== undefined && { imageUrl: parsed.data.imageUrl }),
-          ...(parsed.data.tags !== undefined && { tags: parsed.data.tags }),
-          ...(parsed.data.status !== undefined && { status: parsed.data.status }),
-        },
+        data,
       });
       if (req.userId) await auditLog(req.userId, 'BOOK_UPDATE', 'Book', book.id, { title: book.title });
       res.json(book);

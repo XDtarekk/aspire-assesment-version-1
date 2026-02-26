@@ -3,9 +3,14 @@
 import { useState, useEffect } from "react";
 import { api, type Book } from "@/lib/api";
 import BookCard from "./components/BookCard";
+import { useAuth } from "@/context/AuthContext";
 
 export default function HomePage() {
+  const { token, isReady } = useAuth();
   const [books, setBooks] = useState<Book[]>([]);
+  const [recommendations, setRecommendations] = useState<Book[]>([]);
+  const [recommendationsHasHistory, setRecommendationsHasHistory] = useState<boolean | null>(null);
+  const [recommendationsLoading, setRecommendationsLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [q, setQ] = useState("");
@@ -32,10 +37,54 @@ export default function HomePage() {
       .finally(() => setLoading(false));
   }, [q, status, tag]);
 
+  useEffect(() => {
+    if (!isReady || !token) {
+      setRecommendations([]);
+      setRecommendationsHasHistory(null);
+      return;
+    }
+    setRecommendationsLoading(true);
+    api.ai
+      .getRecommendations(token)
+      .then(({ books: recs, hasHistory }) => {
+        setRecommendations(recs);
+        setRecommendationsHasHistory(hasHistory);
+      })
+      .catch(() => {
+        setRecommendations([]);
+        setRecommendationsHasHistory(null);
+      })
+      .finally(() => setRecommendationsLoading(false));
+  }, [token, isReady]);
+
   return (
     <div>
       <h1 className="mb-6 text-2xl font-bold text-gray-900">Browse books</h1>
 
+      {token && (
+        <section className="mb-8 rounded-lg border border-gray-200 bg-gray-50/80 p-6">
+          <h2 className="mb-3 text-lg font-semibold text-gray-900">Recommended for you</h2>
+          {recommendationsLoading ? (
+            <p className="text-sm text-gray-500">Loading recommendations…</p>
+          ) : recommendationsHasHistory === false ? (
+            <p className="text-sm text-gray-600">
+              The AI system will recommend books for you when you start borrowing books. Check out a book to build your reading history and get personalized suggestions.
+            </p>
+          ) : recommendations.length === 0 ? (
+            <p className="text-sm text-gray-600">
+              No recommendations right now. Keep borrowing to improve your suggestions.
+            </p>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {recommendations.map((book) => (
+                <BookCard key={book.id} book={book} />
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      <h2 className="mb-4 text-lg font-semibold text-gray-900">{token ? "All books" : "Books"}</h2>
       <div className="mb-6 flex flex-wrap gap-4">
         <input
           type="search"
@@ -52,7 +101,6 @@ export default function HomePage() {
           <option value="">All statuses</option>
           <option value="AVAILABLE">Available</option>
           <option value="CHECKED_OUT">Checked out</option>
-          <option value="LOST">Lost</option>
           <option value="ARCHIVED">Archived</option>
         </select>
         <input

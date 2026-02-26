@@ -1,7 +1,7 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://aspire-backend-production.up.railway.app';
 
 export type Role = "ADMIN" | "LIBRARIAN" | "MEMBER";
-export type BookStatus = "AVAILABLE" | "CHECKED_OUT" | "LOST" | "ARCHIVED";
+export type BookStatus = "AVAILABLE" | "CHECKED_OUT" | "ARCHIVED";
 
 export interface Book {
   id: string;
@@ -77,7 +77,7 @@ export const api = {
   },
 
   books: {
-    list: (params?: { q?: string; title?: string; author?: string; tag?: string; status?: string }, token?: string | null) => {
+    list: (params?: { q?: string; title?: string; author?: string; tag?: string; status?: string; archived?: string }, token?: string | null) => {
       const search = params ? "?" + new URLSearchParams(params as Record<string, string>).toString() : "";
       return request<Book[]>(`/api/books${search}`, { token });
     },
@@ -133,6 +133,8 @@ export const api = {
         body: JSON.stringify({ title, author }),
         token,
       }),
+    getRecommendations: (token: string) =>
+      request<{ books: Book[]; hasHistory: boolean }>("/api/ai/recommendations", { token }),
   },
 };
 
