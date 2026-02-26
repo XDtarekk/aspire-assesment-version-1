@@ -101,7 +101,7 @@ exports.booksRouter.patch('/:id', auth_js_1.requireAuth, (0, auth_js_1.requireRo
         if (parsed.data.status === db_2.BookStatus.ARCHIVED) {
             data.archivedAt = now;
         }
-        else if (parsed.data.status !== undefined && parsed.data.status !== db_2.BookStatus.ARCHIVED) {
+        else if (parsed.data.status !== undefined) {
             data.archivedAt = null;
         }
         const book = await db_1.prisma.book.update({

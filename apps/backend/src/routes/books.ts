@@ -106,7 +106,7 @@ booksRouter.patch(
       };
       if (parsed.data.status === BookStatus.ARCHIVED) {
         data.archivedAt = now;
-      } else if (parsed.data.status !== undefined && parsed.data.status !== BookStatus.ARCHIVED) {
+      } else if (parsed.data.status !== undefined) {
         data.archivedAt = null;
       }
       const book = await prisma.book.update({
