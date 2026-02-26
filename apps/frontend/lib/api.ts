@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://aspire-backend-production.up.railway.app';
 
 export type Role = "ADMIN" | "LIBRARIAN" | "MEMBER";
 export type BookStatus = "AVAILABLE" | "CHECKED_OUT" | "LOST" | "ARCHIVED";
