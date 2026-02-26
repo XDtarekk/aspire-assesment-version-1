@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export type Role = "ADMIN" | "LIBRARIAN" | "MEMBER";
 export type BookStatus = "AVAILABLE" | "CHECKED_OUT" | "LOST" | "ARCHIVED";

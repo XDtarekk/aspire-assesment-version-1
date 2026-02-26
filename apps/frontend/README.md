@@ -12,7 +12,7 @@ Web UI for the Mini Library Management System.
 
 Create `.env.local` (see `.env.example`):
 
-- `NEXT_PUBLIC_API_URL` – backend API base URL (default `http://localhost:3001`)
+- `NEXT_PUBLIC_API_URL` – backend API base URL (default `http://localhost:3001`). For production (Vercel), set to `https://aspire-backend-production.up.railway.app`.
 
 ## Commands
 
